@@ -82,51 +82,82 @@ int create_segment(MemoryHandler *handler, const char *name, int start, int size
 
 	if(left_size > 0){
 		left_seg = malloc(sizeof(Segment));
-		left_seg->start = start;
+		left_seg->start = libre_start;
 		left_seg->size = left_size;
 		left_seg->next = NULL;
 	}
-	if(right_seg > 0){
+	if(right_size > 0){
 		right_seg = malloc(sizeof(Segment));
-		right_seg->start = libre_end;
+		right_seg->start = start + size;
 		right_seg->size = right_size;
 		right_seg->next = NULL;
 	}
 
 	//Chainage des seg
-	if(left_seg && right_seg){
-		left_seg->next = right_seg;
-		right_seg->next = free_seg->next;
+	if(left_seg){
+		if(prev) prev->next = left_seg;
+		else handler->free_list = left_seg;
 	}else if(right_seg){
-		right_seg->next = free_seg->next;
+		if(prev) prev->next = right_seg;
+		else handler->free_list = right_seg;
 	}
 
 	//insertion dans la liste
-	handler->free_list = left_seg;
-	left_seg->next = right_seg;
+
+	if (right_seg)right_seg->next = free_seg->next;
+	if (left_seg){
+		if(prev) prev->next = left_seg;
+		else handler->free_list = left_seg;
+	}else if(right_seg){
+		if(prev) prev->next = right_seg;
+		else handler->free_list = right_seg;
+	}
+	free(free_seg);
 
 	return 0;
+
 }
-int remove_segment(MemoryHandler *handler, const char *name){
-	//touver le segment
-	Segment *seg = hashmap_get(handler->allocated, name);
-	//stocker ses donnees dans une variable tmp
-	Segment *free = malloc(sizeof(Segment));
-	free->start = seg->start;
-	free->size = seg->size;
-	//le liberer
-	hashmap_remove(handler->allocated, name);
-	//reallouer dans les segments libre
-	Segment *tmp = handler->free_list;
-	//On cherche l'emplacement de l'insertion
-	while(tmp->next){
-		int fin = tmp->next->start + tmp->next->size;
-		if(fin == (free->start)){
-			free->next = tmp->next->next;
-			tmp->next = free;
-			return 0;
-		}
-		tmp = tmp->next;
-	}
-	return 1;
+
+int remove_segment(MemoryHandler *handler, const char *name) {
+    if (!handler || !name) return -1;
+
+    // 1) Récupère et retire le segment alloué
+    Segment *seg = (Segment*) hashmap_get(handler->allocated, name);
+    if (!seg) return -1;
+    hashmap_remove(handler->allocated, name);
+
+    // 2) Parcours la free_list pour trouver où insérer seg (en gardant l’ordre croissant)
+    Segment *prev = NULL, *curr = handler->free_list;
+    while (curr && curr->start + curr->size < seg->start) {
+        prev = curr;
+        curr = curr->next;
+    }
+
+    // 3) Tenter fusion avec le bloc de gauche
+    if (prev && prev->start + prev->size == seg->start) {
+        prev->size += seg->size;
+        // 3a) Fusion possible avec le bloc de droite aussi ?
+        if (curr && seg->start + seg->size == curr->start) {
+            prev->size += curr->size;
+            prev->next = curr->next;
+            free(curr);
+        }
+        free(seg);
+        return 0;
+    }
+
+    // 4) Fusion seulement avec le bloc de droite
+    if (curr && seg->start + seg->size == curr->start) {
+        curr->start  = seg->start;
+        curr->size  += seg->size;
+        free(seg);
+        return 0;
+    }
+
+    // 5) Pas de fusion : on insère seg entre prev et curr
+    seg->next = curr;
+    if (prev) prev->next = seg;
+    else        handler->free_list = seg;
+
+    return 0;
 }

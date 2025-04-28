@@ -38,8 +38,8 @@ Instruction *parse_data_instruction(const char *line, HashMap *memory_locations)
 		return NULL;
 	}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
 }
+
 Instruction *parse_code_instruction(const char *line, HashMap *labels, int code_count){
-	//ATTENTION IL EST POSSIBLE QUELLE NE GERE PAS BIEN TOUTES LES ENTREES/TYPES DE LIGNES
 	
 	char label[64] = "";
 	char mnemonic[64] = "";
@@ -134,22 +134,21 @@ ParserResult *parse(const char *filename){
 void free_parser_result(ParserResult *result){
 	if (!result) return;
 
-    // 1) Libérer chaque instruction .DATA
-    //    Car chaque instruction contient des champs qu’on a dupliqués avec strdup
+    // 1) Libérer chaque instruction .DATA car chaque instruction contient des champs qu’on a dupliqués avec strdup
     for (int i = 0; i < result->data_count; i++) {
         Instruction *inst = result->data_instructions[i];
         if (inst) {
-            // Libérer les champs de l’instruction
+            // free les champs de l’instruction
             free(inst->mnemonic);
             free(inst->operand1);
             free(inst->operand2);
-            // Libérer la structure elle-même
+            // free la structure elle-même
             free(inst);
         }
     }
     // Puis libérer le tableau data_instructions
 	free(result->data_instructions);
-	 // 2) Libérer chaque instruction .CODE
+	 // 2) free chaque instruction .CODE
 	 for (int i = 0; i < result->code_count; i++) {
         Instruction *inst = result->code_instructions[i];
         if (inst) {
